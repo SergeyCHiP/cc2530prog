@@ -21,13 +21,6 @@
 static struct gpiod_chip *chip = NULL;
 static struct gpiod_line *lines[3] = {NULL, NULL, NULL}; // RST, CLK, DATA
 
-// GPIO line names for Raspberry Pi 5
-static const char *line_names[] = {
-    "GPIO17",  // RST
-    "GPIO27",  // CLK  
-    "GPIO22"   // DATA
-};
-
 // GPIO line numbers for Raspberry Pi 5
 static const unsigned int line_offsets[] = {17, 27, 22};
 
@@ -38,7 +31,7 @@ int gpio_export(int n)
     // Find the line index
     int line_index = -1;
     for (int i = 0; i < 3; i++) {
-        if (line_offsets[i] == n) {
+        if (line_offsets[i] == (unsigned int)n) {
             line_index = i;
             break;
         }
@@ -77,7 +70,7 @@ int gpio_unexport(int n)
     // Find the line index
     int line_index = -1;
     for (int i = 0; i < 3; i++) {
-        if (line_offsets[i] == n) {
+        if (line_offsets[i] == (unsigned int)n) {
             line_index = i;
             break;
         }
@@ -105,7 +98,7 @@ int gpio_set_direction(int n, enum gpio_direction direction)
     // Find the line index
     int line_index = -1;
     for (int i = 0; i < 3; i++) {
-        if (line_offsets[i] == n) {
+        if (line_offsets[i] == (unsigned int)n) {
             line_index = i;
             break;
         }
@@ -153,7 +146,7 @@ int gpio_get_value(int n, bool *value)
     // Find the line index
     int line_index = -1;
     for (int i = 0; i < 3; i++) {
-        if (line_offsets[i] == n) {
+        if (line_offsets[i] == (unsigned int)n) {
             line_index = i;
             break;
         }
@@ -187,7 +180,7 @@ int gpio_set_value(int n, bool value)
     // Find the line index
     int line_index = -1;
     for (int i = 0; i < 3; i++) {
-        if (line_offsets[i] == n) {
+        if (line_offsets[i] == (unsigned int)n) {
             line_index = i;
             break;
         }
