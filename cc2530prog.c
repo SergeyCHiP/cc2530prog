@@ -464,11 +464,8 @@ static int cc2530_do_cmd(const struct cc2530_cmd *cmd, unsigned char *params, un
 	}
 	memset(answer, 0, cmd->out);
 
-	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_OUT);
-	if (ret) {
-		fprintf(stderr, "failed to put gpio in output direction\n");
-		goto out_exit;
-	}
+	/* DATA GPIO is already set to OUTPUT from initialization */
+	printf("[DEBUG] Sending command 0x%02x with %d input bytes\n", cmd->id, cmd->in);
 
 	/*
 	 * Debug instruction also needs to set the number of bytes
@@ -483,11 +480,22 @@ static int cc2530_do_cmd(const struct cc2530_cmd *cmd, unsigned char *params, un
 	for (bytes = 0; bytes < cmd->in; bytes++)
 		send_byte(params[bytes]);
 
-	/* Now change the pin direction and wait for the chip to be ready
-	 * and sample the data pin until the chip is ready to answer */
+	/*
+	 * For libgpiod, we need to release and re-request the line for input
+	 * since we can't change direction of an already requested line
+	 */
+	printf("[DEBUG] Releasing DATA GPIO for input mode\n");
+	gpio_unexport(DATA_GPIO);
+	
+	ret = gpio_export(DATA_GPIO);
+	if (ret) {
+		fprintf(stderr, "failed to re-export DATA GPIO for input\n");
+		goto out_exit;
+	}
+	
 	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_IN);
 	if (ret) {
-		fprintf(stderr, "failed to put back gpio in input direction\n");
+		fprintf(stderr, "failed to set DATA GPIO to input direction\n");
 		goto out_exit;
 	}
 
@@ -499,6 +507,8 @@ static int cc2530_do_cmd(const struct cc2530_cmd *cmd, unsigned char *params, un
 	 * chip.
 	 */
 	gpio_get_value(DATA_GPIO, &val);
+	printf("[DEBUG] Initial DATA GPIO value: %d\n", val);
+	
 	while (val && timeout--) {
 		for (bytes = 0; bytes < 8; bytes++) {
 			gpio_set_value(CCLK_GPIO, 1);
@@ -512,11 +522,28 @@ static int cc2530_do_cmd(const struct cc2530_cmd *cmd, unsigned char *params, un
 		goto out_exit;
 	}
 
+	printf("[DEBUG] Chip is ready, reading %d bytes\n", cmd->out);
+
 	/* Now read the answer */
 	for (bytes = 0; bytes < cmd->out; bytes++)
 		read_byte(&answer[bytes]);
 
 	memcpy(outbuf, answer, cmd->out);
+	
+	/* Re-export DATA GPIO as output for next command */
+	printf("[DEBUG] Re-exporting DATA GPIO as output\n");
+	gpio_unexport(DATA_GPIO);
+	ret = gpio_export(DATA_GPIO);
+	if (ret) {
+		fprintf(stderr, "failed to re-export DATA GPIO for output\n");
+		goto out_exit;
+	}
+	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_OUT);
+	if (ret) {
+		fprintf(stderr, "failed to set DATA GPIO to output direction\n");
+		goto out_exit;
+	}
+
 out_exit:
 	free(answer);
 	return ret;
@@ -534,11 +561,8 @@ static int cc2530_burst_write(void)
 	unsigned int timeout = DEFAULT_TIMEOUT;
 	bool val;
 
-	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_OUT);
-	if (ret) {
-		fprintf(stderr, "failed to put gpio in output direction\n");
-		return ret;
-	}
+	/* DATA GPIO is already set to OUTPUT from initialization */
+	printf("[DEBUG] Starting burst write of %d bytes\n", PROG_BLOCK_SIZE);
 
 	send_byte(CMD_BURST_WR | HIBYTE(PROG_BLOCK_SIZE));
 	send_byte(LOBYTE(PROG_BLOCK_SIZE));
@@ -546,13 +570,25 @@ static int cc2530_burst_write(void)
 	for (i = 0; i < PROG_BLOCK_SIZE; i++)
 		send_byte(get_next_flash_byte());
 
+	/* Re-export DATA GPIO for input */
+	printf("[DEBUG] Releasing DATA GPIO for input mode (burst write)\n");
+	gpio_unexport(DATA_GPIO);
+	
+	ret = gpio_export(DATA_GPIO);
+	if (ret) {
+		fprintf(stderr, "failed to re-export DATA GPIO for input (burst write)\n");
+		return ret;
+	}
+	
 	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_IN);
 	if (ret) {
-		fprintf(stderr, "failed to put gpio in input direction\n");
+		fprintf(stderr, "failed to set DATA GPIO to input direction (burst write)\n");
 		return ret;
 	}
 
 	gpio_get_value(DATA_GPIO, &val);
+	printf("[DEBUG] Initial DATA GPIO value (burst write): %d\n", val);
+	
 	while (val && timeout--) {
 		for (i = 0; i < 8; i++) {
 			gpio_set_value(CCLK_GPIO, 1);
@@ -562,11 +598,26 @@ static int cc2530_burst_write(void)
 	}
 
 	if (!timeout) {
-		fprintf(stderr, "timed out waiting for chip to be ready\n");
+		fprintf(stderr, "timed out waiting for chip to be ready (burst write)\n");
 		return -1;
 	}
 
 	read_byte(&result);
+	printf("[DEBUG] Burst write result: 0x%02x\n", result);
+
+	/* Re-export DATA GPIO as output for next operation */
+	printf("[DEBUG] Re-exporting DATA GPIO as output (burst write)\n");
+	gpio_unexport(DATA_GPIO);
+	ret = gpio_export(DATA_GPIO);
+	if (ret) {
+		fprintf(stderr, "failed to re-export DATA GPIO for output (burst write)\n");
+		return ret;
+	}
+	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_OUT);
+	if (ret) {
+		fprintf(stderr, "failed to set DATA GPIO to output direction (burst write)\n");
+		return ret;
+	}
 
 	return 0;
 }
