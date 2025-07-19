@@ -262,27 +262,86 @@ static void cc2530_show_command_list(void)
 }
 
 /*
- * Perform GPIO initialization
+ * Check GPIO availability before initialization
  */
+static int cc2530_check_gpio_availability(void)
+{
+	int ret;
+	bool value;
+	
+	printf("[DEBUG] Checking GPIO availability...\n");
+	
+	// Check if GPIOs are already in use
+	for (int i = 0; i < ARRAY_SIZE(gpios); i++) {
+		printf("[DEBUG] Checking GPIO %d availability...\n", gpios[i]);
+		
+		// Try to export temporarily
+		ret = gpio_export(gpios[i]);
+		if (ret) {
+			printf("[WARNING] GPIO %d might be in use (export failed: %s)\n", 
+			       gpios[i], strerror(errno));
+			continue;
+		}
+		
+		// Try to set direction
+		ret = gpio_set_direction(gpios[i], GPIO_DIRECTION_OUT);
+		if (ret) {
+			printf("[WARNING] GPIO %d direction setting failed: %s\n", 
+			       gpios[i], strerror(errno));
+		} else {
+			printf("[DEBUG] GPIO %d is available\n", gpios[i]);
+			
+			// Test setting a value
+			ret = gpio_set_value(gpios[i], 0);
+			if (ret) {
+				printf("[WARNING] GPIO %d value setting failed: %s\n", 
+				       gpios[i], strerror(errno));
+			} else {
+				printf("[DEBUG] GPIO %d value setting works\n", gpios[i]);
+			}
+		}
+		
+		// Clean up
+		gpio_unexport(gpios[i]);
+	}
+	
+	return 0;
+}
+
 static int cc2530_gpio_init(void)
 {
 	int ret;
 	unsigned int i;
 
+	printf("[DEBUG] Starting GPIO initialization...\n");
+	printf("[DEBUG] GPIO pins to initialize: RST=%d, CLK=%d, DATA=%d\n", 
+	       RST_GPIO, CCLK_GPIO, DATA_GPIO);
+
 	for (i = 0; i < ARRAY_SIZE(gpios); i++) {
+		printf("[DEBUG] Initializing GPIO %d (index %d)...\n", gpios[i], i);
+		
 		ret = gpio_export(gpios[i]);
 		if (ret) {
-			fprintf(stderr, "failed to export %d\n", gpios[i]);
+			fprintf(stderr, "[ERROR] failed to export GPIO %d (errno: %d, %s)\n", 
+			        gpios[i], errno, strerror(errno));
 			return ret;
 		}
+		printf("[DEBUG] Successfully exported GPIO %d\n", gpios[i]);
 
+		printf("[DEBUG] Setting GPIO %d direction to OUTPUT...\n", gpios[i]);
 		ret = gpio_set_direction(gpios[i], GPIO_DIRECTION_OUT);
 		if (ret) {
-			fprintf(stderr, "failed to set direction on %d\n", gpios[i]);
+			fprintf(stderr, "[ERROR] failed to set direction on GPIO %d (errno: %d, %s)\n", 
+			        gpios[i], errno, strerror(errno));
+			
+			// Try to unexport the GPIO we just exported
+			gpio_unexport(gpios[i]);
 			return ret;
 		}
+		printf("[DEBUG] Successfully set GPIO %d direction to OUTPUT\n", gpios[i]);
 	}
 
+	printf("[DEBUG] GPIO initialization completed successfully\n");
 	return 0;
 }
 
@@ -1103,6 +1162,9 @@ int main(int argc, char **argv)
 
 	if (argc < 2)
 		usage();
+
+	// Check GPIO availability first
+	cc2530_check_gpio_availability();
 
 	if (cc2530_gpio_init()) {
 		fprintf(stderr, "failed to initialize GPIOs\n");

@@ -114,15 +114,20 @@ int gpio_set_direction(int n, enum gpio_direction direction)
         return -1;
     }
     
+    GPIO_DEBUG("GPIO %d: line_index=%d, line_offsets[%d]=%d", n, line_index, line_index, line_offsets[line_index]);
+    
     int ret;
     switch (direction) {
         case GPIO_DIRECTION_IN:
+            GPIO_DEBUG("Requesting INPUT for GPIO %d", n);
             ret = gpiod_line_request_input(lines[line_index], "cc2530prog");
             break;
         case GPIO_DIRECTION_OUT:
+            GPIO_DEBUG("Requesting OUTPUT for GPIO %d", n);
             ret = gpiod_line_request_output(lines[line_index], "cc2530prog", 0);
             break;
         case GPIO_DIRECTION_HIGH:
+            GPIO_DEBUG("Requesting OUTPUT HIGH for GPIO %d", n);
             ret = gpiod_line_request_output(lines[line_index], "cc2530prog", 1);
             break;
         default:
@@ -131,7 +136,7 @@ int gpio_set_direction(int n, enum gpio_direction direction)
     }
     
     if (ret < 0) {
-        GPIO_ERROR("Failed to set direction for GPIO %d", n);
+        GPIO_ERROR("Failed to set direction for GPIO %d (errno: %d, %s)", n, errno, strerror(errno));
         return -1;
     }
     
