@@ -267,12 +267,11 @@ static void cc2530_show_command_list(void)
 static int cc2530_check_gpio_availability(void)
 {
 	int ret;
-	bool value;
 	
 	printf("[DEBUG] Checking GPIO availability...\n");
 	
 	// Check if GPIOs are already in use
-	for (int i = 0; i < ARRAY_SIZE(gpios); i++) {
+	for (unsigned int i = 0; i < ARRAY_SIZE(gpios); i++) {
 		printf("[DEBUG] Checking GPIO %d availability...\n", gpios[i]);
 		
 		// Try to export temporarily
