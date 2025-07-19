@@ -960,11 +960,8 @@ static int cc2530_chip_identify(struct cc2530_cmd *cmd, int *flash_size)
 	unsigned char ext_addr[8] = { 0 };
 	int i;
 
-	ret = gpio_set_direction(DATA_GPIO, GPIO_DIRECTION_OUT);
-	if (ret) {
-		fprintf(stderr, "failed to set data gpio direction\n");
-		return ret;
-	}
+	/* DATA GPIO is already set to OUTPUT from initialization */
+	printf("[DEBUG] Starting chip identification...\n");
 
 	cmd = find_cmd_by_name("get_chip_id");
 	ret = cc2530_do_cmd(cmd, NULL, result);
@@ -972,6 +969,8 @@ static int cc2530_chip_identify(struct cc2530_cmd *cmd, int *flash_size)
 		fprintf(stderr, "%s: failed to issue: %s\n", __func__, cmd->name);
 		goto out;
 	}
+
+	printf("[DEBUG] Chip ID response: 0x%02x 0x%02x\n", result[0], result[1]);
 
 	/* Check that we actually know that chip */
 	if (result[0] != CC2530_ID) {
