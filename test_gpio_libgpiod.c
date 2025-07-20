@@ -113,6 +113,16 @@ int gpio_set_direction(int n, enum gpio_direction direction) {
         return -1;
     }
     
+    // Release the line first to avoid "Device or resource busy" error
+    gpiod_line_release(lines[n]);
+    
+    // Get the line again
+    lines[n] = gpiod_chip_get_line(chip, n);
+    if (!lines[n]) {
+        printf("❌ Failed to get GPIO line %d: %s\n", n, strerror(errno));
+        return -1;
+    }
+    
     int ret = 0;
     switch (direction) {
         case GPIO_DIRECTION_IN:
