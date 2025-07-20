@@ -24,6 +24,16 @@ static struct gpiod_line *lines[3] = {NULL, NULL, NULL}; // RST, CLK, DATA
 // GPIO line numbers for Raspberry Pi 5
 static const unsigned int line_offsets[] = {17, 27, 22};
 
+// Helper function to check if GPIO is properly initialized
+static int check_gpio_initialization(void)
+{
+    if (chip == NULL) {
+        GPIO_ERROR("GPIO chip not initialized");
+        return -1;
+    }
+    return 0;
+}
+
 int gpio_export(int n)
 {
     GPIO_DEBUG("Exporting GPIO %d", n);
@@ -42,11 +52,17 @@ int gpio_export(int n)
         return -1;
     }
     
+    // Check if line is already exported
+    if (lines[line_index] != NULL) {
+        GPIO_WARN("GPIO %d already exported", n);
+        return 0;
+    }
+    
     // Open chip if not already open
     if (chip == NULL) {
         chip = gpiod_chip_open("/dev/gpiochip0");
         if (chip == NULL) {
-            GPIO_ERROR("Failed to open gpiochip0");
+            GPIO_ERROR("Failed to open gpiochip0 (errno: %d, %s)", errno, strerror(errno));
             return -1;
         }
         GPIO_INFO("Opened gpiochip0 successfully");
@@ -55,7 +71,7 @@ int gpio_export(int n)
     // Get the line
     lines[line_index] = gpiod_chip_get_line(chip, line_offsets[line_index]);
     if (lines[line_index] == NULL) {
-        GPIO_ERROR("Failed to get line %d", line_offsets[line_index]);
+        GPIO_ERROR("Failed to get line %d (errno: %d, %s)", line_offsets[line_index], errno, strerror(errno));
         return -1;
     }
     
@@ -66,6 +82,11 @@ int gpio_export(int n)
 int gpio_unexport(int n)
 {
     GPIO_DEBUG("Unexporting GPIO %d", n);
+    
+    // Check if chip is initialized
+    if (check_gpio_initialization() < 0) {
+        return -1;
+    }
     
     // Find the line index
     int line_index = -1;
@@ -94,6 +115,11 @@ int gpio_unexport(int n)
 int gpio_set_direction(int n, enum gpio_direction direction)
 {
     GPIO_DEBUG("Setting direction for GPIO %d to %d", n, direction);
+    
+    // Check if chip is initialized
+    if (check_gpio_initialization() < 0) {
+        return -1;
+    }
     
     // Find the line index
     int line_index = -1;
@@ -148,6 +174,11 @@ int gpio_get_value(int n, bool *value)
 {
     GPIO_DEBUG("Getting value for GPIO %d", n);
     
+    // Check if chip is initialized
+    if (check_gpio_initialization() < 0) {
+        return -1;
+    }
+    
     // Find the line index
     int line_index = -1;
     for (int i = 0; i < 3; i++) {
@@ -169,7 +200,7 @@ int gpio_get_value(int n, bool *value)
     
     int val = gpiod_line_get_value(lines[line_index]);
     if (val < 0) {
-        GPIO_ERROR("Failed to get value for GPIO %d", n);
+        GPIO_ERROR("Failed to get value for GPIO %d (errno: %d, %s)", n, errno, strerror(errno));
         return -1;
     }
     
@@ -181,6 +212,11 @@ int gpio_get_value(int n, bool *value)
 int gpio_set_value(int n, bool value)
 {
     GPIO_DEBUG("Setting value for GPIO %d to %d", n, value);
+    
+    // Check if chip is initialized
+    if (check_gpio_initialization() < 0) {
+        return -1;
+    }
     
     // Find the line index
     int line_index = -1;
@@ -203,7 +239,7 @@ int gpio_set_value(int n, bool value)
     
     int ret = gpiod_line_set_value(lines[line_index], value ? 1 : 0);
     if (ret < 0) {
-        GPIO_ERROR("Failed to set value for GPIO %d", n);
+        GPIO_ERROR("Failed to set value for GPIO %d (errno: %d, %s)", n, errno, strerror(errno));
         return -1;
     }
     

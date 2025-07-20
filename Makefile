@@ -10,28 +10,20 @@ MAKEFLAGS += --no-builtin-rules
 CC?=gcc
 CFLAGS?=-Wall -Wextra
 DEBUG?=0
-GPIO_BACKEND?=gpio-libgpiod
 APP=cc2530prog
 TEST_APP=test_gpio
 
 # Debug flags
 ifeq ($(DEBUG),1)
     CFLAGS += -DDEBUG=1 -g -O0
-    LIBS += -lgpiod
 else
     CFLAGS += -O2
-    LIBS += -lgpiod
 endif
 
-# GPIO backend selection
-ifeq ($(GPIO_BACKEND),gpio-libgpiod)
-    LIBS += -lgpiod
-    GPIO_SRC = gpio-libgpiod.c
-else ifeq ($(GPIO_BACKEND),gpio-sysfs)
-    GPIO_SRC = gpio-sysfs.c
-else
-    $(error Unknown GPIO backend: $(GPIO_BACKEND))
-endif
+# GPIO backend - only libgpiod supported
+GPIO_BACKEND=gpio-libgpiod
+LIBS += -lgpiod
+GPIO_SRC = gpio-libgpiod.c
 
 # Main application
 all: $(APP) $(TEST_APP)
@@ -53,9 +45,6 @@ cc2530prog.o: cc2530prog.c
 	$(CC) $(CFLAGS) -DGPIO_BACKEND=$(GPIO_BACKEND) -c $< -o $@
 
 gpio-libgpiod.o: gpio-libgpiod.c
-	$(CC) $(CFLAGS) -DGPIO_BACKEND=$(GPIO_BACKEND) -c $< -o $@
-
-gpio-sysfs.o: gpio-sysfs.c
 	$(CC) $(CFLAGS) -DGPIO_BACKEND=$(GPIO_BACKEND) -c $< -o $@
 
 debug.o: debug.c
@@ -96,9 +85,10 @@ help:
 	@echo "  help         - Show this help"
 	@echo ""
 	@echo "Variables:"
-	@echo "  GPIO_BACKEND - GPIO backend (gpio-libgpiod, gpio-sysfs)"
 	@echo "  DEBUG        - Enable debug (0/1)"
 	@echo "  CC           - C compiler"
 	@echo "  CFLAGS       - C compiler flags"
+	@echo ""
+	@echo "Note: Only libgpiod backend is supported"
 
 .PHONY: all debug test-debug clean install uninstall help

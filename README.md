@@ -47,18 +47,12 @@ sudo apt install libgpiod-dev
 sudo apt install build-essential
 ```
 
-### GPIO Backend Support:
-The project now supports two GPIO backends:
-
-1. **libgpiod** (Recommended for Raspberry Pi 5)
-   - Modern GPIO character device interface
-   - Full support for Raspberry Pi 5
-   - Better error handling and debugging
-
-2. **sysfs** (Legacy)
-   - Linux GPIO sysfs interface
-   - May not work on newer kernels
-   - Limited support on Raspberry Pi 5
+### GPIO Backend:
+The project uses **libgpiod** backend:
+- Modern GPIO character device interface
+- Full support for Raspberry Pi 5
+- Better error handling and debugging
+- Improved reliability and performance
 
 ## 4. Building and Installation
 
@@ -68,7 +62,7 @@ The project now supports two GPIO backends:
 git clone <repository>
 cd cc2530prog
 
-# Build with libgpiod backend (recommended)
+# Build with libgpiod backend
 make
 
 # Build with debug symbols
@@ -80,10 +74,6 @@ make test-debug
 
 ### Build Options:
 ```bash
-# Select GPIO backend
-make GPIO_BACKEND=gpio-libgpiod    # Modern backend (default)
-make GPIO_BACKEND=gpio-sysfs       # Legacy backend
-
 # Enable debug output
 make DEBUG=1
 
@@ -169,7 +159,7 @@ The project includes comprehensive debug logging:
 ## 7. Software Integration
 
 ### GPIO Interface Functions:
-If your system doesn't support the provided backends, implement these functions:
+The libgpiod backend implements these functions:
 
 ```c
 int gpio_export(int n);                    // Export GPIO pin
@@ -180,11 +170,10 @@ int gpio_set_value(int n, bool value);     // Set GPIO value
 void gpio_cleanup(void);                   // Cleanup resources
 ```
 
-### Adding New Backends:
-1. Create `gpio-yourbackend.c`
-2. Implement the GPIO interface functions
-3. Update `gpio.h` to support your backend
-4. Set `GPIO_BACKEND=gpio-yourbackend` in Makefile
+### Error Handling:
+- Comprehensive error checking with detailed messages
+- Proper resource cleanup on errors
+- Initialization state validation
 
 ## 8. Performance Considerations
 
