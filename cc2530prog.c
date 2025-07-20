@@ -1269,8 +1269,8 @@ int main(int argc, char **argv)
 	}
 
 	if (fwsize > flash_size) {
-		fprintf(stderr, "firmware file too big: %ld (max: %d)\n",
-						fwsize, flash_size);
+		fprintf(stderr, "firmware file too big: %lld (max: %d)\n",
+						(long long)fwsize, flash_size);
 		goto out;
 	}
 
@@ -1281,7 +1281,7 @@ int main(int argc, char **argv)
 	}
 
 	if (verbose)
-		printf("Using firmware file: %s (%ld bytes)\n", firmware, fwsize);
+		printf("Using firmware file: %s (%lld bytes)\n", firmware, (long long)fwsize);
 
 	fwdata = malloc(fwsize);
 	if (!fwdata) {
@@ -1306,5 +1306,6 @@ out_free:
 out:
 	cc2530_leave_debug();
 	cc2530_gpio_deinit();
+	gpio_cleanup();
 	return ret;
 }
