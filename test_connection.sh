@@ -15,27 +15,65 @@ echo "  CLK  (Clock): GPIO $CLK_GPIO (Pin 13)"
 echo "  DATA (Data):  GPIO $DATA_GPIO (Pin 15)"
 echo ""
 
-# Check if GPIOs are available
-echo "Checking GPIO availability..."
-for gpio in $RST_GPIO $CLK_GPIO $DATA_GPIO; do
-    if [ -d "/sys/class/gpio/gpio$gpio" ]; then
-        echo "  GPIO $gpio: Already exported"
-    else
-        echo "  GPIO $gpio: Available"
-    fi
-done
+# Check if gpiochip0 exists
+if [ ! -e "/dev/gpiochip0" ]; then
+    echo "❌ Error: /dev/gpiochip0 not found"
+    echo "   Make sure you're running on Raspberry Pi with GPIO support"
+    exit 1
+fi
+
+echo "✅ /dev/gpiochip0 found"
 echo ""
 
-# Test GPIO control
-echo "Testing GPIO control..."
-echo "  Setting RST to LOW..."
-echo 0 > /sys/class/gpio/gpio$RST_GPIO/value 2>/dev/null && echo "    ✓ RST set to LOW" || echo "    ✗ Failed to set RST"
+# Check if libgpiod tools are available
+if command -v gpioset >/dev/null 2>&1; then
+    echo "✅ libgpiod tools available"
+else
+    echo "❌ libgpiod tools not found"
+    echo "   Install with: sudo apt install gpiod"
+    exit 1
+fi
 
-echo "  Setting CLK to LOW..."
-echo 0 > /sys/class/gpio/gpio$CLK_GPIO/value 2>/dev/null && echo "    ✓ CLK set to LOW" || echo "    ✗ Failed to set CLK"
+echo ""
 
-echo "  Setting DATA to LOW..."
-echo 0 > /sys/class/gpio/gpio$DATA_GPIO/value 2>/dev/null && echo "    ✓ DATA set to LOW" || echo "    ✗ Failed to set DATA"
+# Test GPIO control using libgpiod
+echo "Testing GPIO control with libgpiod..."
+
+# Export and test RST
+echo "  Testing RST (GPIO $RST_GPIO)..."
+if gpioset gpiochip0 $RST_GPIO=0 2>/dev/null; then
+    echo "    ✅ RST set to LOW"
+    gpioset gpiochip0 $RST_GPIO=1 2>/dev/null
+    echo "    ✅ RST set to HIGH"
+else
+    echo "    ❌ Failed to control RST"
+fi
+
+# Export and test CLK
+echo "  Testing CLK (GPIO $CLK_GPIO)..."
+if gpioset gpiochip0 $CLK_GPIO=0 2>/dev/null; then
+    echo "    ✅ CLK set to LOW"
+    gpioset gpiochip0 $CLK_GPIO=1 2>/dev/null
+    echo "    ✅ CLK set to HIGH"
+else
+    echo "    ❌ Failed to control CLK"
+fi
+
+# Export and test DATA
+echo "  Testing DATA (GPIO $DATA_GPIO)..."
+if gpioset gpiochip0 $DATA_GPIO=0 2>/dev/null; then
+    echo "    ✅ DATA set to LOW"
+    gpioset gpiochip0 $DATA_GPIO=1 2>/dev/null
+    echo "    ✅ DATA set to HIGH"
+else
+    echo "    ❌ Failed to control DATA"
+fi
+
+echo ""
+
+# Show GPIO info
+echo "GPIO Chip Information:"
+gpioinfo gpiochip0 | head -20
 echo ""
 
 echo "=== Connection Instructions ==="
@@ -53,4 +91,8 @@ echo "3. If chip ID is 0xFF, check:"
 echo "   - Physical connections"
 echo "   - Power supply (3.3V)"
 echo "   - CC2530 is not damaged"
-echo "   - No other debugger connected" 
+echo "   - No other debugger connected"
+echo ""
+echo "4. For debugging, use:"
+echo "   gpioinfo gpiochip0"
+echo "   gpioget gpiochip0 $RST_GPIO $CLK_GPIO $DATA_GPIO" 
