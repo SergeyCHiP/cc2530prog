@@ -1,0 +1,132 @@
+#
+# Flexible Makefile for GPIO testing
+# Supports libgpiod, WiringPi, pigpio, and sysfs backends
+#
+
+CC?=gcc
+CFLAGS?=-Wall -Wextra
+DEBUG?=0
+
+# GPIO backend selection
+# Use: make GPIO_BACKEND=libgpiod
+#      make GPIO_BACKEND=wiringpi  
+#      make GPIO_BACKEND=pigpio
+#      make GPIO_BACKEND=sysfs
+GPIO_BACKEND?=libgpiod
+
+# Debug flags
+ifeq ($(DEBUG),1)
+    CFLAGS += -DDEBUG=1 -g -O0
+else
+    CFLAGS += -O2
+endif
+
+# Backend-specific settings
+ifeq ($(GPIO_BACKEND),libgpiod)
+    CFLAGS += -DGPIO_BACKEND=1
+    LIBS += -lgpiod
+    BACKEND_NAME = libgpiod
+else ifeq ($(GPIO_BACKEND),wiringpi)
+    CFLAGS += -DGPIO_BACKEND=2
+    LIBS += -lwiringPi
+    BACKEND_NAME = WiringPi
+else ifeq ($(GPIO_BACKEND),pigpio)
+    CFLAGS += -DGPIO_BACKEND=3
+    LIBS += -lpigpio
+    BACKEND_NAME = pigpio
+else ifeq ($(GPIO_BACKEND),sysfs)
+    CFLAGS += -DGPIO_BACKEND=4
+    BACKEND_NAME = sysfs
+else
+    $(error Unknown GPIO backend: $(GPIO_BACKEND). Use: libgpiod, wiringpi, pigpio, or sysfs)
+endif
+
+# Targets
+all: test-flexible
+
+test-flexible: test_gpio_enhanced_flexible.c
+	$(CC) $(CFLAGS) -o test-flexible-$(GPIO_BACKEND) $< $(LIBS)
+	@echo "✅ Built test-flexible-$(GPIO_BACKEND) with $(BACKEND_NAME) backend"
+
+# Individual backend targets
+test-libgpiod:
+	$(MAKE) GPIO_BACKEND=libgpiod test-flexible
+
+test-wiringpi:
+	$(MAKE) GPIO_BACKEND=wiringpi test-flexible
+
+test-pigpio:
+	$(MAKE) GPIO_BACKEND=pigpio test-flexible
+
+test-sysfs:
+	$(MAKE) GPIO_BACKEND=sysfs test-flexible
+
+# Debug versions
+debug-libgpiod:
+	$(MAKE) GPIO_BACKEND=libgpiod DEBUG=1 test-flexible
+
+debug-wiringpi:
+	$(MAKE) GPIO_BACKEND=wiringpi DEBUG=1 test-flexible
+
+debug-pigpio:
+	$(MAKE) GPIO_BACKEND=pigpio DEBUG=1 test-flexible
+
+debug-sysfs:
+	$(MAKE) GPIO_BACKEND=sysfs DEBUG=1 test-flexible
+
+# Test all backends
+test-all: test-libgpiod test-wiringpi test-pigpio test-sysfs
+	@echo "✅ Built tests for all backends"
+
+# Run tests (requires sudo for GPIO access)
+run-libgpiod: test-libgpiod
+	sudo ./test-flexible-libgpiod
+
+run-wiringpi: test-wiringpi
+	sudo ./test-flexible-wiringpi
+
+run-pigpio: test-pigpio
+	sudo ./test-flexible-pigpio
+
+run-sysfs: test-sysfs
+	sudo ./test-flexible-sysfs
+
+# Clean
+clean:
+	rm -f test-flexible-*
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all                    - Build with default backend (libgpiod)"
+	@echo "  test-flexible          - Build with current GPIO_BACKEND"
+	@echo "  test-libgpiod          - Build with libgpiod backend"
+	@echo "  test-wiringpi          - Build with WiringPi backend"
+	@echo "  test-pigpio            - Build with pigpio backend"
+	@echo "  test-sysfs             - Build with sysfs backend"
+	@echo "  test-all               - Build tests for all backends"
+	@echo "  debug-libgpiod         - Build libgpiod with debug"
+	@echo "  debug-wiringpi         - Build WiringPi with debug"
+	@echo "  debug-pigpio           - Build pigpio with debug"
+	@echo "  debug-sysfs            - Build sysfs with debug"
+	@echo "  run-libgpiod           - Build and run libgpiod test"
+	@echo "  run-wiringpi           - Build and run WiringPi test"
+	@echo "  run-pigpio             - Build and run pigpio test"
+	@echo "  run-sysfs              - Build and run sysfs test"
+	@echo "  clean                  - Remove build artifacts"
+	@echo "  help                   - Show this help"
+	@echo ""
+	@echo "Variables:"
+	@echo "  GPIO_BACKEND           - Backend to use (libgpiod/wiringpi/pigpio/sysfs)"
+	@echo "  DEBUG                  - Enable debug (0/1)"
+	@echo "  CC                     - C compiler"
+	@echo "  CFLAGS                 - C compiler flags"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make GPIO_BACKEND=pigpio test-flexible"
+	@echo "  make GPIO_BACKEND=sysfs DEBUG=1 test-flexible"
+	@echo "  make run-pigpio"
+
+.PHONY: all test-flexible test-libgpiod test-wiringpi test-pigpio test-sysfs test-all
+.PHONY: debug-libgpiod debug-wiringpi debug-pigpio debug-sysfs
+.PHONY: run-libgpiod run-wiringpi run-pigpio run-sysfs clean help 
