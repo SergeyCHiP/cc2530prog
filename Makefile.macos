@@ -1,0 +1,83 @@
+#
+# Makefile for cc2530prog (macOS version)
+# Uses mock GPIO backend for development
+#
+
+# Disable all built-in rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
+
+CC?=gcc
+CFLAGS?=-Wall -Wextra
+DEBUG?=0
+APP=cc2530prog
+TEST_APP=test_gpio
+
+# Debug flags
+ifeq ($(DEBUG),1)
+    CFLAGS += -DDEBUG=1 -g -O0
+else
+    CFLAGS += -O2
+endif
+
+# GPIO backend - mock for macOS
+GPIO_BACKEND=gpio-mock
+GPIO_SRC = gpio-mock.c
+
+# Main application
+all: $(APP) $(TEST_APP)
+
+# Object files
+OBJS=$(APP).o $(GPIO_SRC:.c=.o) debug.o
+TEST_OBJS=test_gpio.o $(GPIO_SRC:.c=.o) debug.o
+
+# Main application
+$(APP): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $@
+
+# Test application
+$(TEST_APP): $(TEST_OBJS)
+	$(CC) $(CFLAGS) $(TEST_OBJS) -o $@
+
+# Explicit compilation rules
+cc2530prog.o: cc2530prog.c
+	$(CC) $(CFLAGS) -DGPIO_BACKEND=$(GPIO_BACKEND) -c $< -o $@
+
+gpio-mock.o: gpio-mock.c
+	$(CC) $(CFLAGS) -DGPIO_BACKEND=$(GPIO_BACKEND) -c $< -o $@
+
+debug.o: debug.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+test_gpio.o: test_gpio.c
+	$(CC) $(CFLAGS) -DGPIO_BACKEND=$(GPIO_BACKEND) -c $< -o $@
+
+# Debug version
+debug: CFLAGS += -DDEBUG=1 -g -O0
+debug: $(APP)
+
+# Test with debug
+test-debug: CFLAGS += -DDEBUG=1 -g -O0
+test-debug: $(TEST_APP)
+
+# Clean
+clean:
+	rm -f *.o $(APP) $(TEST_APP)
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all          - Build main app and test (default)"
+	@echo "  debug        - Build with debug symbols"
+	@echo "  test-debug   - Build test with debug symbols"
+	@echo "  clean        - Remove build artifacts"
+	@echo "  help         - Show this help"
+	@echo ""
+	@echo "Variables:"
+	@echo "  DEBUG        - Enable debug (0/1)"
+	@echo "  CC           - C compiler"
+	@echo "  CFLAGS       - C compiler flags"
+	@echo ""
+	@echo "Note: Uses mock GPIO backend for macOS development"
+
+.PHONY: all debug test-debug clean help 

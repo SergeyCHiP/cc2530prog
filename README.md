@@ -1,201 +1,204 @@
-# cc2530prog - Texas Instruments CC2530 Microcontroller Programming Utility
+# CC2530 Programming Tool
 
-## 1. General Information
+Modern CC2530 programming tool for Raspberry Pi 5 using libgpiod.
 
-This utility uses the CC2530 Debug Port to program the microcontroller. The
-specific details of this interface are described in the following documents:
-- [swru191b](http://www.ti.com/lit/swru191)
-- [swra124](http://www.ti.com/lit/ug/swra124/swra124.pdf)
+## 🎯 Features
 
-The hardware is programmed using 3 GPIO pins:
-- **Reset (RST)** - Active low polarity (configurable)
-- **Data (DATA)** - Bidirectional data line
-- **Clock (CLK)** - Clock signal for data transfer
+- **Modern GPIO backend** - Uses libgpiod for Raspberry Pi 5 compatibility
+- **Full CC2530 support** - Identify, program, and verify CC2530 chips
+- **Comprehensive testing** - Built-in GPIO and connection testing tools
+- **Debug support** - Detailed logging and diagnostics
+- **Easy setup** - Simple build and installation process
 
-### Programming Principle:
-1. Pulse the reset line to enter debug mode
-2. Configure hardware with DMA descriptors for transferring data from DEBUG port directly to Flash
-3. Clock out data to the debug port using GPIOs
+## 📋 Requirements
 
-## 2. Hardware Setup for Raspberry Pi 5
+- Raspberry Pi 5 (or compatible)
+- libgpiod: `sudo apt install gpiod libgpiod-dev`
+- CC2530 chip and wiring tools
 
-### Required Connections:
-```
-CC2530 Pin    Raspberry Pi 5 Pin    Function
------------    ------------------    --------
-Reset (P2.0)   GPIO 17 (Pin 11)     Reset (active low)
-Debug Data     GPIO 22 (Pin 15)     Data (bidirectional)
-Debug Clock    GPIO 27 (Pin 13)     Clock
-GND           GND                   Ground
-VCC           3.3V                  Power (if needed)
-```
+## 🚀 Quick Start
 
-### Physical Pin Layout:
-- **GPIO 17** (Pin 11) - Reset line
-- **GPIO 27** (Pin 13) - Clock line  
-- **GPIO 22** (Pin 15) - Data line
-
-## 3. Software Requirements
-
-### Dependencies:
+### 1. Build the Project
 ```bash
-# Install libgpiod for modern GPIO support
-sudo apt update
-sudo apt install libgpiod-dev
-
-# For development
-sudo apt install build-essential
+make clean
+make
 ```
 
-### GPIO Backend:
-The project uses **libgpiod** backend:
-- Modern GPIO character device interface
-- Full support for Raspberry Pi 5
-- Better error handling and debugging
-- Improved reliability and performance
-
-## 4. Building and Installation
-
-### Quick Build:
+### 2. Test GPIO Functionality
 ```bash
-# Clone and build
-git clone <repository>
-cd cc2530prog
+./test_connection.sh
+```
 
-# Build with libgpiod backend
+### 3. Test with CC2530
+```bash
+./cc2530prog -i -v
+```
+
+## 🔧 Hardware Setup
+
+Connect CC2530 to Raspberry Pi 5:
+```
+CC2530 Pin    →  Raspberry Pi 5 Pin
+─────────────────────────────────────
+RST (Reset)   →  GPIO 17 (Pin 11)
+CLK (Clock)   →  GPIO 27 (Pin 13)  
+DATA (Data)   →  GPIO 22 (Pin 15)
+GND           →  GND
+VCC           →  3.3V (IMPORTANT: not 5V!)
+```
+
+## 📖 Usage
+
+### Identify CC2530
+```bash
+./cc2530prog -i -v
+```
+
+### Program Firmware
+```bash
+./cc2530prog -f CC2530ZNP-Prod.hex -v
+```
+
+### Program with Verification
+```bash
+./cc2530prog -f CC2530ZNP-Prod.hex -r -v
+```
+
+### Single Commands
+```bash
+./cc2530prog -c "get_chip_id" -v
+./cc2530prog -c "read_status" -v
+```
+
+### List Available Commands
+```bash
+./cc2530prog -l
+```
+
+## 🔍 Troubleshooting
+
+### Test GPIO Functionality
+```bash
+./test_connection.sh
+```
+
+### Detailed CC2530 Diagnostics
+```bash
+./debug_cc2530.sh
+```
+
+### Loopback Test (without CC2530)
+```bash
+./test_loopback.sh
+```
+
+## 📁 Project Structure
+
+```
+cc2530prog/
+├── cc2530prog.c          # Main application
+├── gpio-libgpiod.c       # GPIO backend (libgpiod)
+├── gpio.h                # GPIO interface
+├── debug.c/h             # Debug system
+├── test_gpio.c           # GPIO test application
+├── Makefile              # Build system
+├── CC2530ZNP-*.hex      # Firmware files
+├── test_*.sh            # Test scripts
+├── CC2530_SETUP.md      # Detailed setup guide
+└── README.md            # This file
+```
+
+## 🛠️ Build Options
+
+### Raspberry Pi (with libgpiod)
+```bash
+# Standard build
 make
 
-# Build with debug symbols
+# Debug build
 make debug
 
-# Build test program
+# Test with debug
 make test-debug
-```
 
-### Build Options:
-```bash
-# Enable debug output
-make DEBUG=1
+# Clean build artifacts
+make clean
 
-# Install system-wide
+# Install to system
 sudo make install
+
+# Show help
+make help
 ```
 
-### Testing GPIO:
+### macOS (with mock GPIO)
 ```bash
-# Test GPIO functionality
-sudo ./test_gpio
+# Standard build
+make -f Makefile.macos
 
-# Test with debug output
-make test-debug
-sudo ./test_gpio
+# Debug build
+make -f Makefile.macos debug
+
+# Test with debug
+make -f Makefile.macos test-debug
+
+# Clean build artifacts
+make -f Makefile.macos clean
+
+# Show help
+make -f Makefile.macos help
 ```
 
-## 5. Usage
+## 🔧 Development
 
-### Basic Commands:
+### Debug Mode
 ```bash
-# Identify device
-sudo ./cc2530prog -i
-
-# List available commands
-sudo ./cc2530prog -l
-
-# Program firmware
-sudo ./cc2530prog -f firmware.bin
-
-# Read back firmware
-sudo ./cc2530prog -r -f readback.bin
-
-# Send single command
-sudo ./cc2530prog -c "command"
-
-# Verbose output
-sudo ./cc2530prog -v -f firmware.bin
+make DEBUG=1
 ```
 
-### Debug Mode:
+### Custom Compiler
 ```bash
-# Build with debug symbols
-make debug
-
-# Run with verbose output
-sudo ./cc2530prog -v -i
+make CC=clang
 ```
 
-## 6. Troubleshooting
-
-### Common Issues:
-
-**GPIO Export Errors:**
+### Custom Flags
 ```bash
-# Check GPIO availability
-ls /dev/gpiochip*
-
-# Check libgpiod installation
-gpioinfo
-
-# Test GPIO manually
-sudo ./test_gpio
+make CFLAGS="-Wall -Wextra -O0 -g"
 ```
 
-**Permission Errors:**
-```bash
-# Run with sudo (required for GPIO access)
-sudo ./cc2530prog -i
+## 📊 Expected Results
+
+### Successful CC2530 Identification
+```
+[DEBUG] Chip ID response: 0xa5 0xXX
+Texas Instruments CC2530 (ID: 0xA5, rev 0xXX)
+Flash size: XXX KB
 ```
 
-**Device Not Found:**
-- Check physical connections
-- Verify GPIO pin assignments
-- Ensure CC2530 is powered correctly
-
-### Debug Information:
-The project includes comprehensive debug logging:
-- GPIO operations are logged with timestamps
-- Error conditions are clearly reported
-- Use `make debug` for detailed output
-
-## 7. Software Integration
-
-### GPIO Interface Functions:
-The libgpiod backend implements these functions:
-
-```c
-int gpio_export(int n);                    // Export GPIO pin
-int gpio_unexport(int n);                  // Unexport GPIO pin
-int gpio_set_direction(int n, enum gpio_direction direction);  // Set direction
-int gpio_get_value(int n, bool *value);    // Get GPIO value
-int gpio_set_value(int n, bool value);     // Set GPIO value
-void gpio_cleanup(void);                   // Cleanup resources
+### Failed CC2530 Identification
+```
+[DEBUG] Chip ID response: 0xff 0xff
+unknown Chip ID: ff
 ```
 
-### Error Handling:
-- Comprehensive error checking with detailed messages
-- Proper resource cleanup on errors
-- Initialization state validation
+## 📝 Notes
 
-## 8. Performance Considerations
+- CC2530 requires 3.3V power supply
+- Debug interface is sensitive to timing
+- Physical connections must be solid
+- Some CC2530 chips may be locked or damaged
 
-The CC2530 firmware size matches available hardware flash sizes (64KB to 256KB).
-Since programming via debug port is slow, consider:
+## 📚 Documentation
 
-1. **Bootstrap Method**: Use debug port for initial programming
-2. **UART/SPI Bootloader**: Use TI's bootloader for larger transfers
-3. **Optimized Transfers**: Use DMA descriptors for efficient programming
+- [CC2530_SETUP.md](CC2530_SETUP.md) - Detailed setup and troubleshooting guide
+- [CC2530 Datasheet](http://www.ti.com/lit/ds/symlink/cc2530.pdf)
+- [libgpiod Documentation](https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git/about/)
 
-## 9. Future Developments
+## 📄 License
 
-- Interactive debugging using debug interface
-- Support for additional CC2530 variants
-- Enhanced error recovery mechanisms
-- Integration with TI's debug dongle functionality
+This project is distributed under a 2-clause BSD license. See [LICENSE](LICENSE) for details.
 
-## 10. License
+## 👥 Authors
 
-This project is distributed under a 2-clause BSD license. See LICENSE for details.
-
----
-
-**Original Author:** Florian Fainelli  
-**Updated for Raspberry Pi 5:** 2024
+Original by Florian Fainelli <f.fainelli@gmail.com>
+Updated for Raspberry Pi 5 with libgpiod support
